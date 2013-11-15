@@ -8,6 +8,7 @@ from django.db.models.loading import get_model
 from haystack import connections
 from haystack.constants import DEFAULT_ALIAS
 from haystack.exceptions import NotHandled
+from haystack import connection_router
 from queued_search.utils import get_queue_name
 
 
@@ -18,17 +19,16 @@ logging.basicConfig(
     level=LOG_LEVEL
 )
 
+
 class Command(NoArgsCommand):
     help = "Consume any objects that have been queued for modification in search."
     can_import_settings = True
     base_options = (
         make_option('-b', '--batch-size', action='store', dest='batchsize',
-            default=None, type='int',
-            help='Number of items to index at once.'
-        ),
+                    default=None, type='int',
+                    help='Number of items to index at once.'),
         make_option("-u", "--using", action="store", type="string", dest="using", default=DEFAULT_ALIAS,
-            help='If provided, chooses a connection to work with.'
-        ),
+                    help='If provided, chooses a connection to work with.'),
     )
     option_list = NoArgsCommand.option_list + base_options
 
@@ -199,6 +199,7 @@ class Command(NoArgsCommand):
         updates = {}
         previous_path = None
         current_index = None
+        using = None
 
         for obj_identifier in self.actions['update']:
             (object_path, pk) = self.split_obj_identifier(obj_identifier)
@@ -219,6 +220,7 @@ class Command(NoArgsCommand):
             if object_path != previous_path:
                 previous_path = object_path
                 current_index = self.get_index(model_class)
+                using = connection_router.for_write(current_index)[0]
 
             if not current_index:
                 self.log.error("Skipping.")
@@ -239,8 +241,8 @@ class Command(NoArgsCommand):
                 end = min(start + self.batchsize, total)
                 batch_instances = instances[start:end]
 
-                self.log.debug("  indexing %s - %d of %d." % (start+1, end, total))
-                current_index._get_backend(self.using).update(current_index, batch_instances)
+                self.log.debug("  indexing %s - %d of %d." % (start + 1, end, total))
+                current_index._get_backend(using).update(current_index, batch_instances)
 
                 for updated in batch_instances:
                     self.processed_updates.add("%s.%s" % (object_path, updated.pk))
@@ -256,6 +258,7 @@ class Command(NoArgsCommand):
         deletes = {}
         previous_path = None
         current_index = None
+        using = None
 
         for obj_identifier in self.actions['delete']:
             (object_path, pk) = self.split_obj_identifier(obj_identifier)
@@ -276,6 +279,7 @@ class Command(NoArgsCommand):
             if object_path != previous_path:
                 previous_path = object_path
                 current_index = self.get_index(model_class)
+                using = connection_router.for_write(current_index)[0]
 
             if not current_index:
                 self.log.error("Skipping.")
@@ -284,7 +288,7 @@ class Command(NoArgsCommand):
             pks = []
 
             for obj_identifier in obj_identifiers:
-                current_index.remove_object(obj_identifier, using=self.using)
+                current_index.remove_object(obj_identifier, using=using)
                 pks.append(self.split_obj_identifier(obj_identifier)[1])
                 self.processed_deletes.add(obj_identifier)
 
