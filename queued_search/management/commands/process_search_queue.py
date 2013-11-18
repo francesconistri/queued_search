@@ -220,7 +220,7 @@ class Command(NoArgsCommand):
             if object_path != previous_path:
                 previous_path = object_path
                 current_index = self.get_index(model_class)
-                using = connection_router.for_write(current_index)[0]
+                using = connection_router.for_write(index=current_index)[0]
 
             if not current_index:
                 self.log.error("Skipping.")
@@ -279,7 +279,7 @@ class Command(NoArgsCommand):
             if object_path != previous_path:
                 previous_path = object_path
                 current_index = self.get_index(model_class)
-                using = connection_router.for_write(current_index)[0]
+                using = connection_router.for_write(index=current_index)[0]
 
             if not current_index:
                 self.log.error("Skipping.")
