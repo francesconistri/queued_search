@@ -199,7 +199,7 @@ class Command(NoArgsCommand):
         updates = {}
         previous_path = None
         current_index = None
-        using = None
+        using = self.using
 
         for obj_identifier in self.actions['update']:
             (object_path, pk) = self.split_obj_identifier(obj_identifier)
@@ -258,7 +258,7 @@ class Command(NoArgsCommand):
         deletes = {}
         previous_path = None
         current_index = None
-        using = None
+        using = self.using
 
         for obj_identifier in self.actions['delete']:
             (object_path, pk) = self.split_obj_identifier(obj_identifier)
